@@ -5,7 +5,15 @@ import java.util.Set;
 import entropy.core.impl.Status;
 
 /**
- * Minimum implementation for Entropy Protocol.
+ * Object is a claim of value on the network.
+ * 
+ * The status can be one of three states:
+ *  - Receipt
+ *  - Payment
+ *  - Fee
+ * 
+ * Receipt has been signed by the recipient, and no longer holds value.
+ * Payment 
  * 
  * @author eric
  *
