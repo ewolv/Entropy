@@ -1,6 +1,6 @@
 Entropy Protocol
 
-Copyright (c) 2011 Entropy Protocol Developers
+Copyright (c) 2012 Entropy Protocol Developers
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

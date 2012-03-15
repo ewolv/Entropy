@@ -260,15 +260,24 @@ public class TropBuilder {
 
       @Override
       public String toString() {
-        return "Trop [parentId=" + parentId + ", id=" + id + ", status="
-            + status + ", validatedTime=" + validatedTime + ", value=" + value
-            + ", zeroCount=" + zeroCount
-            + ", recipientValue=" + recipientValue + ", appraisedValue="
-            + appraisedValue + ", fileDigest=" + fileDigest + ", fileSizeBytes="
-            + fileSizeBytes + ", recipient=" + recipient + ", creator=" + creator
-            + ", creatorSignature=" + creatorSignature + ", courierBlock="
-            + courierBlock + ", blacklist=" + blacklist + ", childIds="
-            + childIds + ", courierKeys=" + courierKeys + "]";
+        return "Trop " + System.getProperty( "line.separator" ) + 
+        "parentId=" + parentId + System.getProperty( "line.separator" ) + 
+        ", id=" + id + System.getProperty( "line.separator" ) + 
+        ", status=" + status + System.getProperty( "line.separator" ) + 
+        ", validatedTime=" + validatedTime + System.getProperty( "line.separator" ) + 
+        ", value=" + value + System.getProperty( "line.separator" ) + 
+        ", zeroCount=" + zeroCount + System.getProperty( "line.separator" ) + 
+        ", recipientValue=" + recipientValue + System.getProperty( "line.separator" ) + 
+        ", appraisedValue=" + appraisedValue + System.getProperty( "line.separator" ) + 
+        ", fileDigest=" + fileDigest + System.getProperty( "line.separator" ) + 
+        ", fileSizeBytes=" + fileSizeBytes + System.getProperty( "line.separator" ) + 
+        ", recipient=" + recipient + System.getProperty( "line.separator" ) + 
+        ", creator=" + creator + System.getProperty( "line.separator" ) + 
+        ", creatorSignature=" + creatorSignature + System.getProperty( "line.separator" ) + 
+        ", courierBlock=" + courierBlock + System.getProperty( "line.separator" ) + 
+        ", blacklist=" + blacklist + System.getProperty( "line.separator" ) +
+        ", childIds="  + childIds + System.getProperty( "line.separator" ) + 
+        ", courierKeys=" + courierKeys + "]";
       }
       @Override
       public int compareTo(Trop o) {
@@ -277,7 +286,7 @@ public class TropBuilder {
       
     };
     if(t.getId() == null) {
-      
+      //TODO:EXCEPTION
     }
     return t;
   }

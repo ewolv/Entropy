@@ -7,7 +7,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,7 +41,6 @@ System.exit(0);
     //prepare data for validator
     Map<String,Trop> localCopiesMap = new HashMap<String,Trop>(),
                      tropMap = new HashMap<String,Trop>();
-    
     Set<String> ids = new HashSet<String>();
     for(Trop t : trops) {
       ids.add(t.getId());
@@ -50,7 +48,9 @@ System.exit(0);
     }
     //get local copies of incoming trops
     Collection<Trop> localCopies = getTropById(ids.toArray(new String[] {}));
+    System.out.println("fetching local copies...");
     for(Trop t : localCopies) {
+      System.out.println(t);
       localCopiesMap.put(t.getId(),t);
       ids.addAll(t.getChildIds());
     }
@@ -77,14 +77,15 @@ System.exit(0);
     }
     
     Validator v = new Validator(address, rater, tropMap, localCopiesMap, blacklistRecipients);
-    
+    System.out.println("Validating...");
     Set<Trop> results = v.validate();
     
     Set<String> resultIds = new TreeSet<String>();
     for(Trop t : results) {
       resultIds.add(t.getId());
     }
-    
+    System.out.println("Done validating. Insert.");
+    System.out.println(results);
     insertOrUpdate(results.toArray(new Trop[]{}));
   }
   
@@ -107,6 +108,8 @@ System.exit(0);
   }
 
   private void delete(String... ids) {
+    if(ids == null || ids.length == 0) return;
+    //REMOVE FROM TROP TABLE
     StringBuilder sb = new StringBuilder("DELETE FROM TROP WHERE \"ID\" IN (");
     for(String id : ids) {
       sb.append("'" + id + "',");
@@ -119,24 +122,56 @@ System.exit(0);
       st.close();
     } catch (SQLException e) {
 //TODO: LOGGING
+      e.printStackTrace();
 System.out.println("FATAL - Error deleting trops from store.");
 System.exit(0);
     }
+    
+    //REMOVE FROM COURIER KEY
+    ////////////////////////////////////////////////////////////////////////////
+    sb = new StringBuilder("DELETE FROM COURIER_KEYS WHERE \"ID\" IN (");
+    for(String id : ids) {
+      sb.append("'" + id + "',");
+    }
+    sb = new StringBuilder(sb.substring(0,sb.length()-1));//remove extra ','
+    sb.append(")");
+    try {
+      Statement st = con.createStatement();
+      st.executeUpdate(sb.toString());
+      st.close();
+    } catch (SQLException e) {
+//TODO: LOGGING
+      e.printStackTrace();
+System.out.println("FATAL - Error deleting trops from store.");
+System.exit(0);
+    }
+    ////////////////////////////////////////////////////////////////////////////
   }
   
   private void insertOrUpdate(Trop ... trops) {
     
-    String insertTrop = "INSERT INTO TROP (\"PARENT_ID\",\"ID\",\"STATUS\",\"VALIDATED\",\"VALUE\",\"R_VALUE\",\"APPRAISED_VALUE\",\"FILE_DIGEST\",\"FILE_SIZE\",\"RECIPIENT\",\"CREATOR\",\"CREATOR_SIG\",\"COURIER_BLOCK\",\"BLACKLIST\") " +
+    String insertTrop = "INSERT INTO TROP (\"PARENT_ID\",\"ID\",\"STATUS\",\"VALIDATED\"," +
+    		                                  "\"VALUE\",\"R_VALUE\",\"APPRAISED_VALUE\"," +
+    		                                  "\"FILE_DIGEST\",\"FILE_SIZE\",\"RECIPIENT\"," +
+    		                                  "\"CREATOR\",\"CREATOR_SIG\",\"COURIER_BLOCK\",\"BLACKLIST\") " +
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-    String updateTrop = "UPDATE TROP SET \"STATUS\" = ?, \"VALIDATED\" = ?, \"APPRAISED_VALUE\" = ?, \"COURIER_BLOCK\" = ?, \"BLACK_LIST\" = ? WHERE \"ID\" = ?";
+    String insertCourierKey = "INSERT INTO COURIER_KEYS (\"ID\",\"COURIER_KEY\") VALUES (?,?)";
+    //String updateTrop = "UPDATE TROP SET \"STATUS\" = ?, \"VALIDATED\" = ?, \"APPRAISED_VALUE\" = ?, \"COURIER_BLOCK\" = ?, \"BLACK_LIST\" = ? WHERE \"ID\" = ?";
     Set<String> ids = new HashSet<String>();
     for(Trop t : trops) {
       ids.add(t.getId());
     }
+    //delete old trops
     Collection<Trop> exists = getTropById(ids.toArray(new String[]{}));
+    ids.clear();
+    for(Trop t : exists) {
+      ids.add(t.getId());
+    }
+    delete(ids.toArray(new String[]{}));
+    
     try {
       PreparedStatement psInsert = con.prepareStatement(insertTrop);
-      for(Trop t : trops) {   
+      for(Trop t : trops) {
         psInsert.setString(1,t.getParentId());
         psInsert.setString(2, t.getId());
         psInsert.setString(3,t.getStatus().toString());
@@ -151,31 +186,42 @@ System.exit(0);
         psInsert.setString(12,t.getCreatorSignature());
         psInsert.setString(13,t.getCourierBlock());
         psInsert.setString(14, (t.isBlackList()?"T":"F"));
-        psInsert.executeUpdate();
+        psInsert.execute();
+      }
+      psInsert.close();
+      psInsert = con.prepareStatement(insertCourierKey);
+      for(Trop t : trops) {
+        for(String courierKey : t.getCourierKeys()) {
+          psInsert.setString(1, t.getId());
+          psInsert.setString(2, courierKey);
+          psInsert.execute();
+        }
       }
       psInsert.close();
     } catch(SQLException se) {
 //TODO: LOGGING
+      se.printStackTrace();
 System.out.println("FATAL : could not insert validated trops");
 System.exit(0);
     }
   }
+  
   @Override
   public Collection<Trop> getPayments() {
     Set<Trop> results = new TreeSet<Trop>();
-    try {
-      Statement st = con.createStatement();
-      ResultSet rs = st.executeQuery("SELECT * FROM TROP WHERE \"PARENT_ID\" = \"ID\"");
-      while(rs.next()) {
-        results.add(rowToTrop(rs));
-      }
-      rs.close();
-    } catch(SQLException se) {
-//TODO: LOGGING
-System.out.println("FATAL : Could not get orphan node.");
-se.printStackTrace();
-System.exit(0);
-    }
+//    try {
+//      Statement st = con.createStatement();
+//      ResultSet rs = st.executeQuery("SELECT * FROM TROP WHERE \"PARENT_ID\" = \"ID\"");
+//      while(rs.next()) {
+//        results.add(rowToTrop(rs));
+//      }
+//      rs.close();
+//    } catch(SQLException se) {
+////TODO: LOGGING
+//System.out.println("FATAL : Could not get orphan node.");
+//se.printStackTrace();
+//System.exit(0);
+//    }
     try {
       Statement st = con.createStatement();
       ResultSet rs = st.executeQuery("SELECT * FROM TROP WHERE \"STATUS\" = 'PAY'");
@@ -187,9 +233,37 @@ System.exit(0);
 System.out.println("FATAL : could not retrieve payments.");
 System.exit(0);
     }
+    if (results.isEmpty()) return results;
+    
+    //RECOVER COURIER KEYS
+    ////////////////////////////////////////////////////////////////////////////
+    StringBuilder sb = new StringBuilder("SELECT * FROM COURIER_KEYS WHERE \"ID\" IN (");
+    for(Trop t : results) {
+      sb.append("'" + t.getId() + "',");
+    }
+    sb = new StringBuilder(sb.substring(0,sb.length()-1));//remove extra ','
+    sb.append(")");
+    try {
+      Statement st = con.createStatement();
+      ResultSet rs = st.executeQuery(sb.toString());
+      st.close();
+      while(rs.next()) {
+        
+      }
+    } catch (SQLException e) {
+//TODO: LOGGING
+      e.printStackTrace();
+System.out.println("FATAL - Error deleting trops from store.");
+System.exit(0);
+    }
+    ////////////////////////////////////////////////////////////////////////////
+    
     return results;
   }
 
+  /**
+   * Gets the heritage of complete payments
+   */
   @Override
   public Collection<Trop> getDeliveries() {
     

@@ -345,7 +345,7 @@ System.exit(0);
     File outFile = null;
     if(selectedFile!=null &&!selectedFile.equals("Select file to encrypt. Don't touch for no file.")) {
     //encrypt the child and calculate digest
-    outFile = new File(FileUtils.encryptFile(publicKey, selectedFile));
+    outFile = new File(FileUtils.encryptFile(publicKey, selectedFile, null));
     fileDigest = SecurityUtils.checksum(outFile);
     fileSizeBytes = outFile.length();
     }

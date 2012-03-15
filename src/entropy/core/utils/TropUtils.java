@@ -20,7 +20,6 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.commons.codec.binary.Base64;
-import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 
 import entropy.core.exception.TropException;
 import entropy.core.exception.TropFormatException;
@@ -34,7 +33,7 @@ public class TropUtils {
   public static Set<Trop> sign(PrivateKey privateKey, Trop payment, Trop... fees) throws TropException {
     
     //Validation:
-    //Ensure not null, parents and children agree on relationship, value of children does not exceep parent.
+    //Ensure not null, parents and children agree on relationship, value of children does not exceed parent.
     
     if (payment == null || payment == null || fees == null) {
 //TODO: LOGGING
@@ -217,6 +216,8 @@ throw new RuntimeException(message);
     return results;
   }
   
+  
+  
   public static Collection<Trop> createFee(Trop parent, byte value, byte rValue,
       String fileDigest, long fileSizeBytes, String recipient,
       PublicKey publicKey, PrivateKey privateKey, Collection<Trop> siblings) throws TropException {
@@ -235,7 +236,8 @@ throw new RuntimeException(message);
     tb.calculateId();
     Trop t = tb.build();
 //////////////////////////////////////////////////////////////////////////////
-    
+
+    parent.addChildId(t.getId());
     siblings.add(t);
     checkValue(parent, siblings.toArray(new Trop[]{}));
       
@@ -276,8 +278,8 @@ System.exit(0);
 //////////////////////////////////////////////////////////////////////////////
     
 
-//We sign the id of this trop.  then append the id to the end of 
-//our signature.  This will be used by the recipient to know that they 
+//We sign the id of this trop.  then append our signature to the end of 
+//our id.  This will be used by the recipient to know that they 
 //are at the bottom of the courier fee list.
 //////////////////////////////////////////////////////////////////////////////
     byte[] courierBlock = null;
@@ -509,8 +511,8 @@ throw new RuntimeException(message);
     }
     String base64CourierKey = Base64.encodeBase64String(wrappedCourierKey);
     parent.addCourierKey(base64CourierKey);
-//////////////////////////////////////////////////////////////////////////////
     
+//////////////////////////////////////////////////////////////////////////////
     Set<Trop> results = new TreeSet<Trop>();
     results.add(t);
     results.add(parent);
@@ -651,5 +653,171 @@ System.exit(0);
        binary.append(' ');
     }
     return binary.toString();
+  }
+  
+  public static Trop constructOrphan(PublicKey publicKey, PrivateKey privateKey) {
+    //construct orphan trop where parent id = trop id
+
+    //Construct the new Trop  
+    //////////////////////////////////////////////////////////////////////////////
+    TropBuilder tb = TropBuilder.getBuilder();
+    tb.setStatus(Status.PAY);
+    tb.setParentId("the_beginning______________________________");
+    tb.setId("the_beginning______________________________");
+    tb.setValue((byte)127);
+    tb.setRecipientValue((byte)0);
+    tb.setFileSizeBytes(0);
+    tb.setRecipient(Base64.encodeBase64String(publicKey.getEncoded()));
+    tb.setCreator(Base64.encodeBase64String(publicKey.getEncoded()));
+    Trop t = tb.build();
+    //////////////////////////////////////////////////////////////////////////////
+      
+    //the orphan must have its courier block constructed so children can be added and it signed
+    
+    //Decode our ID
+    //////////////////////////////////////////////////////////////////////////////
+    String base64EncodedStringRepresentationID = t.getId();
+    byte[] base64EncodedByteRepresentationID = null;
+    try {
+    //TODO: LOGGING - 
+      base64EncodedByteRepresentationID = base64EncodedStringRepresentationID.getBytes("UTF8");
+    } catch (UnsupportedEncodingException e) {
+System.out.println("Fatal Exception - Encoding not found.");
+System.exit(0);
+    }
+    byte[] rawID = Base64.decodeBase64(base64EncodedByteRepresentationID);
+    //////////////////////////////////////////////////////////////////////////////
+    
+    // Sig(Id) + ID is the base courier block, these operations are all performed on raw bytes - not encoded
+
+
+  //We sign the id of this trop.  then append the id to the end of 
+  //our signature.  This will be used by the recipient to know that they 
+  //are at the bottom of the courier fee list.
+  //////////////////////////////////////////////////////////////////////////////
+      byte[] courierBlock = null;
+      try {
+      //TODO: LOGGING - 
+        courierBlock = SecurityUtils.sign(privateKey,rawID);
+System.out.println("courierBlock.length: " + courierBlock.length);
+      } catch (InvalidKeyException e) {
+  String message = "Key not properly formatted.";
+  System.out.println(message);
+  throw new RuntimeException(message);
+      } catch (NoSuchAlgorithmException e) {
+  System.out.println("Fatal Exception - Algorithm not found.");
+  System.exit(0);
+      } catch (SignatureException e) {
+  String message = "Signature improperly formatted.";
+  System.out.println(message);
+  throw new RuntimeException(message);
+      }
+
+      System.out.println("rawID.length: " + rawID.length);
+      byte[] cblock = new byte[32 + 256];
+      for(int i = 0 ; i < cblock.length ; i++) {
+        if (i < rawID.length) {
+          cblock[i] = rawID[i];
+        } else {
+          cblock[i] = courierBlock[i-rawID.length];
+        }
+      }
+  //////////////////////////////////////////////////////////////////////////////
+    
+
+    //AES ENCRYPTION
+    //Encrypt our signature + id with an AES key.  
+    //////////////////////////////////////////////////////////////////////////////
+        SecretKeySpec aesKey = null;
+        try {
+        //TODO: LOGGING - 
+          aesKey = SecurityUtils.generateAESKey();
+        } catch (NoSuchAlgorithmException e) {
+    System.out.println("Fatal Exception - Algorithm not found.");
+    System.exit(0);
+        }
+        
+        byte[] firstCourierBlock = null;
+        try {
+        //TODO: LOGGING - 
+          firstCourierBlock = SecurityUtils.encryptAES(aesKey, cblock);
+        } catch (InvalidKeyException e) {
+    String message = "Key not properly formatted.";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        } catch (IllegalBlockSizeException e) {
+    String message = "IllegalBlockSizeException ";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        } catch (BadPaddingException e) {
+    String message = "BadPaddingException";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        } catch (NoSuchAlgorithmException e) {
+    System.out.println("Fatal Exception - Algorithm not found.");
+    System.exit(0);
+        } catch (NoSuchPaddingException e) {
+    String message = "NoSuchPaddingException";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        }
+    //////////////////////////////////////////////////////////////////////////////
+        
+    //Update courier block
+    //////////////////////////////////////////////////////////////////////////////
+        String encodedFirstCourierBlock = Base64.encodeBase64String(firstCourierBlock);
+        t.setCourierBlock(encodedFirstCourierBlock);
+    //////////////////////////////////////////////////////////////////////////////
+        
+        
+    //RSA ENCRYPTION
+    //Wrap our AES key with the Recipient's public key and add it to courier keys
+    //////////////////////////////////////////////////////////////////////////////
+        byte[] rsaEncrypted = null;
+        try {
+        //TODO: LOGGING
+          rsaEncrypted = SecurityUtils.wrapAESkeyWithRSAPublic(publicKey, aesKey);
+        } catch (InvalidKeyException e) {
+    String message = "NoSuchPaddingException";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        } catch (IllegalBlockSizeException e) {
+    String message = "NoSuchPaddingException";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        } catch (NoSuchAlgorithmException e) {
+    System.out.println("Fatal Exception - Algorithm not found.");
+    System.exit(0);
+        } catch (NoSuchPaddingException e) {
+    String message = "NoSuchPaddingException";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        }
+        String encodedFirstCourierKey = Base64.encodeBase64String(rsaEncrypted);
+        t.addCourierKey(encodedFirstCourierKey);
+    //////////////////////////////////////////////////////////////////////////////
+        
+    //creator signature
+    //////////////////////////////////////////////////////////////////////////////
+        byte[] preSig = calculateCreatorPreSig(t);
+        byte[] creatorSignature = null;
+        try {
+          //TODO: LOGGING
+          creatorSignature = SecurityUtils.sign(privateKey,preSig);
+        } catch (InvalidKeyException e) {
+    String message = "Key not properly formatted.";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        } catch (NoSuchAlgorithmException e) {
+    System.out.println("Fatal Exception - Algorithm not found.");
+    System.exit(0);
+        } catch (SignatureException e) {
+    String message = "Signature improperly formatted.";
+    System.out.println(message);
+    throw new RuntimeException(message);
+        }
+        t.setCreatorSignature(Base64.encodeBase64String(creatorSignature));
+    //////////////////////////////////////////////////////////////////////////////
+    return t;
   }
 }

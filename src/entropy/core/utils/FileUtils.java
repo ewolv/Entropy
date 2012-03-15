@@ -83,6 +83,9 @@ public class FileUtils {
                   continue;
                 }
                 if ("FILE_DIGEST".equals(event.asStartElement().getName().getLocalPart())) {
+//TODO: exceptions w/o syso on empty digest... wtf?
+System.out.println(eventReader);
+System.out.println(eventReader.nextEvent());
                   tb.setFileDigest(eventReader.nextEvent().asCharacters().getData());
                   continue;
                 }
@@ -124,10 +127,12 @@ public class FileUtils {
         }
       }
     } catch (Exception e) {
+      e.printStackTrace();
 //TODO: LOGGING
 System.out.println("FATAL : Could not read trop from xml file.");
 System.exit(0);
     }
+    System.out.println(results);
     return results;
   }
   
@@ -365,12 +370,27 @@ System.exit(0);
     }
  }
 
-  public static String encryptFile(PublicKey publicKey, String inputFile) {
+  public static String encryptFile(PublicKey publicKey, String inputFile, String outDir) {
     File inFile = new File(inputFile),
-         tempFile = new File(System.getProperty("user.dir") + "/temp/" + inFile.getName()),
-         keyFile = new File(System.getProperty("user.dir") + "/temp/wrappedAesKey.dat"),
-         outFile = new File(System.getProperty("user.dir") + "/deliveries/"+(new Date()).getTime());
-    try { 
+         tempFile = new File(outDir + "/" + inFile.getName()),
+         keyFile = new File(outDir + "/" + "wrappedAesKey.dat"),
+         outFile = new File(outDir + "/" + (new Date()).getTime());
+    System.out.println("infile: " + inFile.getAbsolutePath());
+    System.out.println("  exists "  + inFile.exists());
+    System.out.println("  canWrite " + inFile.canWrite());
+
+    tempFile.mkdirs();
+    if(tempFile.exists())
+      tempFile.delete();
+    try {
+      tempFile.createNewFile();
+    } catch (IOException e1) {
+  e1.printStackTrace();
+//TODO : LOGGING
+System.out.println("FATAL : Could not encrypt file and save to disk.");
+System.exit(0);
+    }
+    try {
       SecretKeySpec aesKeySpec = SecurityUtils.generateAESKey();
       encrypt(inFile, tempFile, aesKeySpec);
       byte[] wrapped = SecurityUtils.wrapAESkeyWithRSAPublic(publicKey, aesKeySpec);
@@ -384,6 +404,7 @@ System.exit(0);
       filePaths.add(tempFile.getAbsolutePath());
       packDeliveries(outFile.getAbsolutePath(),filePaths);
     } catch (Exception e) {
+      e.printStackTrace();
 //TODO : LOGGING
 System.out.println("FATAL : Could not encrypt file and save to disk.");
 System.exit(0);
