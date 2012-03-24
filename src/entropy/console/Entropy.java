@@ -183,11 +183,11 @@ public class Entropy {
       KeyPair keyPair = kpg.genKeyPair();
       privateKey = keyPair.getPrivate();
       publicKey = keyPair.getPublic();
-      FileOutputStream fout = new FileOutputStream("PRIVATE_KEY.dat");
+      FileOutputStream fout = new FileOutputStream(homeDirectory.getAbsolutePath()+"/PRIVATE_KEY.dat");
       for(Byte b : privateKey.getEncoded())
         fout.write(b);
       fout.close();
-      fout = new FileOutputStream("PUBLIC_KEY.dat");
+      fout = new FileOutputStream(homeDirectory.getAbsolutePath()+"/PUBLIC_KEY.dat");
       for(Byte b : publicKey.getEncoded()) 
         fout.write(b);
       fout.close();

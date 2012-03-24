@@ -135,7 +135,6 @@ System.exit(0);
     System.out.println(results);
     return results;
   }
-  
   public static void tropToXml(Collection<Trop> trops, String outputFile) {
     try {
       XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
@@ -261,7 +260,6 @@ System.exit(0);
     eventWriter.add(eElement);
     eventWriter.add(end);
   }
-
   public static void fileIdToXml(String outputFile, Collection<String> digests) {
     try {
       XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
@@ -286,8 +284,6 @@ System.out.println("FATAL : Could not write file ids to xml file.");
 System.exit(0);
     }
   }
-
-
   public static Collection<String> xmlToFileId(String inputFile) {   
     Set<String> results = new TreeSet<String>();
   try {
@@ -311,7 +307,6 @@ System.exit(0);
   }
   return results;
 }
-
   public static void packDeliveries(String outputFile, Collection<String> filePaths) { // These are the files to include in the ZIP file
     // Create a buffer for reading the files
     byte[] buf = new byte[1024];

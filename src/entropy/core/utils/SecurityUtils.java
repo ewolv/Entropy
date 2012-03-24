@@ -53,55 +53,39 @@ public class SecurityUtils {
    cipher.init(Cipher.ENCRYPT_MODE, key);
    return cipher.doFinal(data);
  }
- public static byte[] decryptAES(SecretKeySpec key, byte[] data) throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
-   Cipher cipher = Cipher.getInstance("AES");
-   cipher.init(Cipher.DECRYPT_MODE, key);
-   return cipher.doFinal(data);
- }
- public static SecretKeySpec generateAESKey() throws NoSuchAlgorithmException {
-   KeyGenerator kgen = KeyGenerator.getInstance("AES");
-   kgen.init(128);
-   SecretKey skey = kgen.generateKey();
-   byte[] rawAesKey = skey.getEncoded();
-   return new SecretKeySpec(rawAesKey, "AES");
- }
- public static byte[] wrapAESkeyWithRSAPublic(PublicKey publicKey, Key wrapKey) throws InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException {
+  public static byte[] decryptAES(SecretKeySpec key, byte[] data) throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+    Cipher cipher = Cipher.getInstance("AES");
+    cipher.init(Cipher.DECRYPT_MODE, key);
+    return cipher.doFinal(data);
+  }
+  public static SecretKeySpec generateAESKey() throws NoSuchAlgorithmException {
+    KeyGenerator kgen = KeyGenerator.getInstance("AES");
+    kgen.init(128);
+    SecretKey skey = kgen.generateKey();
+    byte[] rawAesKey = skey.getEncoded();
+    return new SecretKeySpec(rawAesKey, "AES");
+  }
+  public static byte[] wrapAESkeyWithRSAPublic(PublicKey publicKey, Key wrapKey) throws InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException {
    Cipher cipher = Cipher.getInstance("RSA");
    cipher.init(Cipher.WRAP_MODE, publicKey);
    return cipher.wrap(wrapKey);
- }
- 
- public static SecretKeySpec unwrapAESkeyWithRSAPrivate(PrivateKey privateKey, byte[] wrappedKey) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
-   Cipher cipher = Cipher.getInstance("RSA");
-   cipher.init(Cipher.UNWRAP_MODE, privateKey);
-   Key recoveredKey = cipher.unwrap(wrappedKey, "AES", Cipher.SECRET_KEY);
-   return new SecretKeySpec(recoveredKey.getEncoded(), "AES");
- }
- public static byte[] sign(PrivateKey key, byte[] data) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
-   Signature sig = Signature.getInstance("SHA1WithRSA");
-   sig.initSign(key);
-   sig.update(data); 
-   return sig.sign(); 
- }
- public static boolean validateSignature(PublicKey key, byte[] preSig, byte[] postSig) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-   Signature sig = Signature.getInstance("SHA1WithRSA");
-   sig.initVerify(key);
-   sig.update(preSig);
-   return sig.verify(postSig);
- }
- public static String byteToBinaryString(byte... bytes) {
-   StringBuilder binary = new StringBuilder();
-   for (byte b : bytes)
-   {
-      int val = b;
-      for (int i = 0; i < 8; i++)
-      {
-         binary.append((val & 128) == 0 ? 0 : 1);
-         val <<= 1;
-      }
-      binary.append(' ');
-   }
-   return binary.toString();
- }
-  
+  }
+  public static SecretKeySpec unwrapAESkeyWithRSAPrivate(PrivateKey privateKey, byte[] wrappedKey) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+    Cipher cipher = Cipher.getInstance("RSA");
+    cipher.init(Cipher.UNWRAP_MODE, privateKey);
+    Key recoveredKey = cipher.unwrap(wrappedKey, "AES", Cipher.SECRET_KEY);
+    return new SecretKeySpec(recoveredKey.getEncoded(), "AES");
+  }
+  public static byte[] sign(PrivateKey key, byte[] data) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+    Signature sig = Signature.getInstance("SHA1WithRSA");
+    sig.initSign(key);
+    sig.update(data); 
+    return sig.sign(); 
+  }
+  public static boolean validateSignature(PublicKey key, byte[] preSig, byte[] postSig) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+    Signature sig = Signature.getInstance("SHA1WithRSA");
+    sig.initVerify(key);
+    sig.update(preSig);
+    return sig.verify(postSig);
+  }
 }
